@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>Chess Self-Play Monitor</title>
-    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <!-- Usiamo chessboard2 che carica nativamente i pezzi via CDN senza problemi di immagini -->
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboard2@0.0.3-alpha/dist/chessboard2.min.css">
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboard2@0.0.3-alpha/dist/chessboard2.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; background: #f0f2f5; margin-top: 30px; }
         #board { width: 400px; margin: 15px auto; }
@@ -24,18 +25,15 @@
         let apiUrl = prompt("Inserisci l'URL dell'API FEN (es. http://localhost:5001/fen):", "http://localhost:5001/fen");
         if (!apiUrl) { apiUrl = "http://localhost:5001/fen"; }
 
-        var board = Chessboard('board', {
-            position: 'start',
-            draggable: false
-        });
+        // Inizializza la scacchiera con Chessboard2
+        var board = Chessboard2('board', 'start');
 
         function updateBoard() {
             $.getJSON(apiUrl)
                 .done(function(data) {
-                    // Decifra il JSON strutturato inviato dall'API Python
                     if (data && data.fen) {
                         board.position(data.fen);
-                        $('#status').text("Ultima mossa: " + (data.last_move || "Nessuna") + " | FEN: " + data.fen);
+                        $('#status').text("Ultima mossa: " + (data.last_move || "Nessuna"));
                         if (data.moves) {
                             $('#moves').text("Cronologia mosse: " + data.moves.join(", "));
                         }
