@@ -2,55 +2,184 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Chess Self-Play Monitor</title>
-    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scacchi Self-Play Monitor (Qwen AI)</title>
+    <!-- Libreria Chess.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f0f2f5; margin-top: 30px; }
-        #board { width: 400px; margin: 15px auto; }
-        #status { font-size: 15px; font-weight: bold; color: #333; margin-top: 10px; }
-        #moves { font-size: 13px; color: #666; max-width: 400px; margin: 10px auto; word-break: break-all; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #18181c;
+            color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .header-title {
+            margin-bottom: 8px;
+            font-size: 1.4rem;
+            color: #e0e0e0;
+            text-align: center;
+        }
+
+        .status-panel {
+            margin-bottom: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 8px 16px;
+            background-color: #252530;
+            border-radius: 8px;
+            border: 1px solid #3f3f50;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: min(85vh, 90vw);
+            max-width: 640px;
+        }
+
+        /* Contenitore principale della scacchiera */
+        .board-container {
+            width: min(76vh, 88vw);
+            height: min(76vh, 88vw);
+            max-width: 500px;
+            max-height: 500px;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            border: 4px solid #4a3b32;
+            border-radius: 6px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .square {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .square.light {
+            background-color: #f0d9b5;
+        }
+
+        .square.dark {
+            background-color: #b58863;
+        }
+
+        .piece {
+            font-size: clamp(1.8rem, 5.5vw, 2.7rem);
+            line-height: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .piece.white {
+            color: #ffffff;
+            text-shadow: 0 0 2px #000, 0 1px 4px rgba(0,0,0,0.7);
+        }
+
+        .piece.black {
+            color: #111111;
+            text-shadow: 0 0 1px #fff, 0 1px 4px rgba(0,0,0,0.8);
+        }
+
+        #moves {
+            font-size: 13px;
+            color: #a0a0b0;
+            max-width: 500px;
+            margin-top: 15px;
+            text-align: center;
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Scacchiera in Tempo Reale (Self-Play AI)</h1>
-    <div id="board"></div>
-    <div id="status">In attesa di connessione all'API...</div>
+    <h1 class="header-title">Monitor Scacchi Self-Play (Qwen AI)</h1>
+
+    <div class="status-panel" id="status">Connessione all'API in corso...</div>
+
+    <div class="board-container" id="board"></div>
+
     <div id="moves">Cronologia mosse: </div>
 
     <script>
-        // Chiede l'URL dell'API all'avvio
         let apiUrl = prompt("Inserisci l'URL dell'API FEN (es. http://localhost:5001/fen):", "http://localhost:5001/fen");
         if (!apiUrl) { apiUrl = "http://localhost:5001/fen"; }
 
-        // Inizializzazione con pieceTheme esplicito per caricare le immagini anche aprendo il file in locale (file://)
-        var board = Chessboard('board', {
-            position: 'start',
-            draggable: false,
-            pieceTheme: 'https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/img/chesspieces/wikipedia/{piece}.png'
-        });
+        let game = new Chess();
+        
+        const pieceSymbols = {
+            'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚',
+            'P': '♙', 'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔'
+        };
 
-        function updateBoard() {
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+        const movesElement = document.getElementById('moves');
+
+        function createBoard(fen) {
+            game.load(fen);
+            boardElement.innerHTML = '';
+            const boardState = game.board();
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(r + c) % 2 === 0 ? 'light' : 'dark'}`;
+
+                    const piece = boardState[r][c];
+                    if (piece) {
+                        const pieceElement = document.createElement('div');
+                        const pieceKey = piece.color === 'w' ? piece.type.toUpperCase() : piece.type;
+                        pieceElement.className = `piece ${piece.color === 'w' ? 'white' : 'black'}`;
+                        pieceElement.textContent = pieceSymbols[pieceKey];
+                        square.appendChild(pieceElement);
+                    }
+
+                    boardElement.appendChild(square);
+                }
+            }
+        }
+
+        function pollServer() {
             $.getJSON(apiUrl)
                 .done(function(data) {
                     if (data && data.fen) {
-                        board.position(data.fen);
-                        $('#status').text("Ultima mossa: " + (data.last_move || "Nessuna"));
+                        createBoard(data.fen);
+                        statusElement.textContent = "Ultima mossa dell'IA: " + (data.last_move || "Iniziale");
                         if (data.moves) {
-                            $('#moves').text("Cronologia mosse: " + data.moves.join(", "));
+                            movesElement.textContent = "Cronologia mosse: " + data.moves.join(", ");
                         }
                     }
                 })
                 .fail(function() {
-                    $('#status').text("Errore di connessione a " + apiUrl);
+                    statusElement.textContent = "Errore di connessione all'API Python (" + apiUrl + ")";
                 });
         }
 
-        // Aggiorna la scacchiera ogni secondo
-        setInterval(updateBoard, 1000);
+        // Interroga l'API Python ogni secondo per aggiornare grafica e pezzi
+        setInterval(pollServer, 1000);
+        pollServer();
     </script>
-
 </body>
 </html>
