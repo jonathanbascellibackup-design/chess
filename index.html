@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Chess Self-Play Monitor</title>
+    <!-- CSS e librerie per la scacchiera interattiva -->
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f0f2f5; margin-top: 50px; }
+        #board { width: 400px; margin: 20px auto; }
+        #status { font-size: 18px; font-weight: bold; color: #333; }
+    </style>
+</head>
+<body>
+
+    <h1>Scacchiera in Tempo Reale (Self-Play AI)</h1>
+    <div id="board"></div>
+    <div id="status">In attesa di connessione...</div>
+
+    <script>
+        let apiUrl = prompt("Inserisci l'URL dell'API FEN:", "http://localhost:5000/fen");
+        if (!apiUrl) { apiUrl = "http://localhost:5000/fen"; }
+
+        var board = Chessboard('board', {
+            position: 'start',
+            draggable: false
+        });
+
+        function updateBoard() {
+            $.getJSON(apiUrl)
+                .done(function(data) {
+                    if (data && data.fen) {
+                        board.position(data.fen);
+                        $('#status').text("FEN Corrente: " + data.fen);
+                    }
+                })
+                .fail(function() {
+                    $('#status').text("Errore di connessione all'API...");
+                });
+        }
+
+        // Aggiorna la scacchiera ogni 1 secondo
+        setInterval(updateBoard, 1000);
+    </script>
+
+</body>
+</html>
